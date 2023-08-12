@@ -1,0 +1,395 @@
+---
+title: Homework \#01
+author: SMDS-2022-2023
+date: | 
+  | \textsc{\textbf{\Large Statstical Methods in Data Science II a.y.2022-2023 }}
+  |
+  | M.Sc. in Data Science
+  |
+  | \underline{deadline: April 20th, 2023}
+output:
+  html_document:
+    keep_md: yes
+    theme: united
+  word_document:
+    toc: no
+  pdf_document:
+    keep_tex: yes
+    toc: no
+header-includes:
+- \usepackage{transparent}
+- \usepackage[utf8]{inputenx}
+- \usepackage{iwona}
+- \usepackage{tikz}
+- \usepackage{dcolumn}
+- \usepackage{color}
+- \usepackage[italian]{babel}
+- \usepackage{listings}
+- \usepackage{hyperref}
+- \usepackage{setspace}
+- \usepackage{enumitem}
+- \usepackage{tocloft}
+- "\\usepackage{eso-pic}"
+- \geometry{verbose,tmargin=5cm,bmargin=3.5cm,lmargin=2.5cm,rmargin=2.5cm}
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# the default output hook
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  if (!is.null(n <- options$out.lines)) {
+    x = unlist(stringr::str_split(x, '\n'))
+    if (length(x) > n) {
+      # truncate the output
+      x = c(head(x, n), '....\n')
+    }
+    x = paste(x, collapse = '\n') # paste first n lines together
+  }
+  hook_output(x, options)
+})
+```
+
+```{r, include=FALSE, warning=FALSE}
+
+options(width=60)
+opts_chunk$set(out.lines = 23, comment = "", warning = FALSE, message = FALSE, echo = TRUE, tidy = TRUE, size="small",tidy.opts=list(width.cutoff=50), fig.align = 'center', fig.width = 5, fig.height = 4)
+```
+
+```{r,echo=FALSE}
+set.seed(123)
+load("Hmwk.RData")
+```
+
+<font color="#FF0000"></font>
+
+
+
+## A. Simulation
+
+### 1. Consider the following joint discrete distribution of a random vector $(Y,Z)$ taking values over the bi-variate space: 
+\begin{eqnarray*}
+{\cal S} = {\cal Y} \times {\cal Z} &=& \{(1,1);(1,2);(1,3);\\
+&& (2,1);(2,2);(2,3);\\
+&& (3,1);(3,2);(3,3)\}
+\end{eqnarray*}
+The joint probability distribution is provided as a matrix $\texttt{J}$  whose generic entry $\texttt{J[y,z]}=Pr \{Y=y,Z=z\}$ 
+```{r}
+J
+S
+```
+You can load the matrix `S` of all the couples of the states in ${\cal S}$ and the matrix `J` containing the corresponding bivariate probability masses from the file "Hmwk.RData". How can you check that $J$ is a probability distribution?
+ 
+To check that $J$ is a probability distribution we simply have to check the following property: $\sum_{(y, z) \in \cal S} J(y, z) = 1$
+
+```{r}
+load("Hmwk.RData")
+# print the sum of all the elements of the J matrix
+sum(J)
+```
+
+\bigskip
+
+
+
+### 2. How many *conditional distributions* can be derived from the joint distribution `J`? Please list and derive them.
+
+
+\bigskip
+
+\textbf{Answer}: 
+
+For *discrete distributions* we can derive the *marginal distributions* for a specific variable directly from the *joint distribution* in the following way:
+
+>- $p_{Y}(y) = \sum_{z \in \cal Z} J(y,z)$
+>- $p_{Z}(z) = \sum_{y \in \cal Y} J(y,z)$
+
+The joint distribution is bivariate and I can derive the marginal distributions of the two variables $Y$ and $Z$. Then I evaluate the conditional distributions of the two variables each represented by a $3 \times 3$ matrix using the joint and the marginals:
+
+>- $p_{Y|Z}(y|z) =  \frac {J(y,z)} {p_{Z}(z)}$
+>- $p_{Z|Y}(z|y) =  \frac {J(y,z)} {p_{Y}(y)}$
+
+```{r echo=FALSE}
+source("scripts.R")
+show_distr(J)
+```
+
+
+
+\bigskip 
+
+
+\bigskip
+
+### 3. Make sure they are probability distributions.
+```{r echo=FALSE}
+verify_distr(J)
+
+```
+
+
+
+\bigskip
+
+
+### 4. Can you simulate from this `J` distribution? Please write down a working procedure with few lines of R code as an example. Can you conceive an alternative approach? In case write down an alternative working procedure with few lines of R
+
+```{r}
+# the code is also available in the "scripts.R" file but I prefer report it explicitly in markdown
+
+# first simulation method
+sim1 <- function(J, n){
+  probs <- c(J) # flattening the probability matrix
+  # well define the support from which we sample
+  support <- as.data.frame(t(expand.grid(y=1:3, z=1:3))) 
+  samples.list <- as.data.frame(t(sample(support, n, replace=T, prob=probs))) # sample
+  rownames(samples.list) <- NULL # reset the row indexes
+  return(samples.list)
+}
+
+# second simulation method
+sim2 <- function(J, n){
+  distros <- derive.distr(J) # derive marginals and conditionals
+  p.Y <- distros$p.Y # distr. of Y
+  p.Z.given.Y <- distros$p.Z.given.Y # distr. of Z|Y
+  y.sample <- sample(1:3, n, replace=T, prob=p.Y) # sample y from the marginal of Y
+  z.sample <- rep(NA,n) # init the z sample
+  for(idx in 1:n){
+    y <- y.sample[idx]
+    p.Z.given.y <- p.Z.given.Y[,y] # choose the correct conditional distr. 
+    # sample from the conditional distr. given the sampled Y=y
+    z.sample[idx] <- sample(1:3, 1, prob=p.Z.given.y) 
+  }
+  sample.list <- data.frame(y=y.sample, z=z.sample)
+  return(sample.list)
+}
+
+```
+
+\bigskip
+
+
+\newpage
+
+## B. Bulb lifetime: a conjugate Bayesian analysis of exponential data
+
+You work for Light Bulbs International. You have developed an innovative bulb, and you are interested in characterizing it statistically. You test 20 innovative bulbs to determine their lifetimes, and you observe the following data (in hours), which have been sorted from smallest to largest.
+
+\begin{table}[!h]
+\centering
+\begin{tabular}{l}
+1, 13, 27, 43, 73, 75, 154, 196, 220, 297,\\
+344, 610, 734, 783, 796, 845, 859, 992, 1066, 1471
+\end{tabular}
+\end{table}
+
+Based on your experience with light bulbs, you believe that their lifetimes $Y_i$ can be modeled using an exponential distribution conditionally on $\theta$ where $\psi = 1/\theta$ is the average bulb lifetime.
+
+
+### 1. Write the main ingredients of the Bayesian model.
+
+### 2. Choose a conjugate prior distribution $\pi(\theta)$ with mean equal to 0.003 and standard deviation 0.00173.
+
+In order to choose a proper prior distribution we can start by providing a short analysis of the *likelihood function*. Moreover we have to assume the independence of the bulbs lifetimes' distributions when conditioned on $\theta$, i.e: consider the bulbs lifetimes as random variables $Y_{i}|\theta \sim Exp(\theta)$, $i = \{1,2,...,20 \}$ we assume that $f_{Y_{1},... ,Y_{20}| \theta = \theta_{0}}(y_{1},... ,y_{20}) = \prod_{i=1}^{n} f_{Y_{i} | \theta = \theta_{0}}(y_{i})$.\
+
+ $$
+ L_{Y_{1},... ,Y_{20}}(\theta) = \prod_{i=1}^{n} f_{Y_{i} | \theta = \theta_{0}}(y_{i}) = \\
+ = \prod_{i} \theta e^{ - \theta y_{i}} = \\
+ = \theta^{n} \cdot e^{- (\theta \sum_{i}y_{i})}
+ $$
+ We can easily note a similarity with a well known distribution: the *Gamma*, which is characterized by the generic shape $f_{\theta}=g(c_{1}, c_{2}) \cdot \theta^{c_{1}} e^{-c_{2} \theta}$. With this naive intuition I decide to use a Gamma distribution as prior conjugate to the exponential distribution (later I'll provide a complete proof about this choice).\
+ 
+ Now I can proceed solving the system of two equations in order to satisfy the requested properties about mean and standard deviation (having selected the distribution):\
+ 
+$$
+\begin{cases} \alpha / \beta = 0.003\\ \sqrt{\alpha} / \beta = 0.00173
+\end{cases} \leftrightarrow \begin{cases} \alpha  = (0.003/0.00173)^2 \\ \beta = 0.003/(0.00173)^2 
+\end{cases} \rightarrow \theta \sim Gamma(3.007, 1002.372) 
+$$
+
+### 3. Argue why with this choice you are providing only a vague prior opinion on the average lifetime of the bulb.
+
+In the exercise 4 is reported a proof about the conjugacy class gamma to the exponential likelihood and the resulting updated hyperparameters of the posterior $\pi(\theta|y_{1},...,y_{2})$ given by the formula :\
+$$ \begin{cases} \alpha^{*} = \alpha + n \\
+\beta^{*} = \beta + \sum_{i} y_{i} \end{cases}$$
+
+Now I can proceed with the analysis of some of the features of the updated $\theta$ distribution to make some consideration about the obtained result.\
+
+First of all notice that the gamma distribution is the one that I choose for $\theta$ and for $\psi = 1/\theta$ (that parametrizes the mean of the exponential distr.) it can be easily proved that the equivalent distribution is an *Inverse-Gamma*, thus $\psi \sim InvGamma( \alpha + n, \beta + \sum_{i} y_{i})$.\
+
+Explicitly deriving the expected value for $\psi$ it can be shown that it is a convex combination of the sample mean (corresponding to the MLE) and the mean of the prior Inverse-Gamma ($\frac {\beta} {(\alpha-1)}$):
+
+$$
+E(\psi|y_{1},...,y_{n})= \frac {\beta^{*}} {\alpha^{*}-1} = \frac {\beta + \sum_{i} y_{i}} { \alpha + n-1} = \\
+= \frac {\beta} { \alpha + n-1} \cdot \frac {\sum_{i} y_{i}} { \alpha + n-1} = \\
+= \frac {(\alpha - 1)} { (\alpha + n-1)} \cdot \frac {\beta} {(\alpha-1)} + \frac n {\alpha + n-1} \cdot \overline{y}
+$$
+Note that for $n \rightarrow \infty$ ,$E(\psi) \rightarrow \overline{y}$ going back to the frequentist framework and obtaining the *maximum likelihood estimator* itself for the mean value of an exponential distribution. In this way the two results/frameworks are comparable in some way, in particular, considering the weights $w_{1} = \frac {(\alpha - 1)} { (\alpha -1)+ n}$ and $w_{2} =  \frac n {(\alpha -1) + n}$ it is possible to control the effect of our prior belief and how much it actually impacts on the learning process. In this case the exercise opts for fairly weak assumptions given that $w_{1} << w_{2}$.\
+In general, a Bayesian estimator may be preferred to the maximum likelihood estimator because of its lower estimation variability. In fact, although the former is biased, the latter suffers from higher variance and the overall performance in terms of MSE may suffer greatly. The difference between the two performances comes from a number of factors including: sample size and precision of the a priori assumptions.\
+In this case the prior beliefs about the average lifetime are too vague since the variance of the estimator of the mean seems to be larger than the variance of the sample mean. This could lead to an increase in Loss by introducing an estimator with high variability and biased at the same time!
+In point 5 of this homework I'll explicitly evaluate the variance of the bayesian estimator of $\psi$, here I provide a qualitative comparison between $\psi_{Bayes}$ and $\psi_{mle}$ estimators:
+$$
+Bias[\psi_{Bayes}] = w_{1} \frac {\beta} {(\alpha-1)} + (w_{2} -1) \psi_{true} \rightarrow biased \\
+Bias[\psi_{mle}] = \psi_{true} - \psi_{true} = 0 \rightarrow unbiased 
+$$
+As demonstrated the Bayesian estimator must justify a loss in performance in terms of precision (bias) with better variance than other estimators so as to reduce this component of the MSE.
+
+### 4. Show that this setup fits into the framework of the conjugate Bayesian analysis.
+
+In order to show the fit of this setup into the conjugate Bayesian framework I can plug-in the selected prior distribution into the Bayes' formula and verify that it returns a posterior distribution of the same type (a Gamma).
+
+$$ \pi(\theta|y_{1},...,y_{n}) = \pi(\theta) \cdot \frac {f_{Y_{1},...,Y_{n}}(y_{1},...,y_{n}| \theta)} {f_{Y_{1},...,Y_{n}}(y_{1},...,y_{n})} = \\
+= \theta^{(\alpha - 1)} \cdot e^{-\beta \theta} \cdot \theta^{n} \cdot e^{(-\theta \sum_{i} y_{i})} \cdot c(y, \alpha, \beta) \\
+\rightarrow \pi(\theta|y_{1},...,y_{n}) \varpropto \theta^{(\alpha + n - 1)} \cdot e^{-(\beta + \sum_{i} y_{i})\theta}$$
+
+Recall that the shape of the gamma distribution (in the shape-rate reparametrization) is $f_{\theta} \varpropto \theta^{c_{1}-1} \cdot e^{-c_{2}\theta}$ and, looking at the above proportionality equation, recognize newely a gamma distribution as posterior with updated parameters $(\alpha^{*} = \alpha + n, \beta^{*} = \beta + \sum_{i} y_{i})$.\
+
+To summarize, if we look at a sample of random variables distributed as an exponential and consider a gamma prior distribution for the parameter of the exponential, then the posterior will also be a gamma distribution.
+
+```{r, echo=FALSE}
+a = 3.007 # params of the prior
+b = 1002.372
+# observations
+obs = c(1, 13, 27, 43, 73, 75 , 154, 196, 220, 297, 344, 610, 734, 783, 796, 845, 859, 992, 1066, 1471)
+a.new = a+length(obs) # updated parameters
+b.new = b+sum(obs)
+
+# plotting the two distributions
+colo = viridis::viridis(4, .5)
+curve(dgamma(x, shape=a.new, rate=b.new), 0, .02, col = colo[3], lwd = 4, xlab = "p", ylab = "",
+      main = "Gamma update")
+curve(dgamma(x, shape=a, rate=b), col = colo[2], lwd = 4, add=T)
+abline(v = a/b, lty = 3, lwd = 3, col = colo[2])
+abline(v = a.new/b.new, lty = 3, lwd = 3, col = colo[3])
+legend("topright", c("Prior Gamma", "Posterior Gamma"),
+       col = c(colo[3], colo[2]), lwd = 4, bty = "n", cex = .8)
+grid()
+```
+
+
+### 5. Based on the information gathered on the 20 bulbs, what can you say about the main characteristics of the lifetime of your innovative bulb? Argue that we have learnt some relevant information about the $\theta$ parameter and this can be converted into relevant information about the unknown average lifetime of the innovative bulb $\psi=1/\theta$.
+
+First, from the obtained information, it is possible to make an estimate of the average life time of a bulb based on the expected value of the mean $\psi$ reported and analyzed in Step 3 of this exercise. Given observations above $y_{1},...,y_{20}$ we know that $E(\psi|y_{1},...,y_{20})= 481.72$. The simple sample mean is $\hat\psi_{mle} = 479.95$: it is slightly different from the previous conditional expectation (but not that much given the weak a priori assumptions) but these results would converge for larger and larger sample sizes.\
+
+I report further information like the variance (that I mentioned earlier):
+$$ Var(\psi | y_{1},..,y_{20}) = \frac {(\beta^{*})^{2}} {( \alpha^{*}-1)^{2}(\alpha^{*}-2)} = \frac {(\beta + \sum_{i} y_{i})^2} {(\alpha +n-1)^{2} (\alpha + n - 2)} = 11046.85 $$
+So the variance literally explodes (more than I expected) and it seems that our result can vary extremely for different observations showing high uncertainty in the estimation of $\theta$ and $\psi$!\
+
+One last information never touched in the previous Steps is the *posterior predictive distribution* which can be derived using all the other components of this Bayesian conjugate analysis :
+
+$$
+f_{Y_{new}}(y_{new}| y_{obs}) = \int_0^\infty f(y_{new}|\theta, y_{obs}) \cdot f(\theta|y_{obs}) d\theta=\\
+= \int_0^\infty f(y_{new}|\theta) \cdot f(\theta|y_{obs}) d\theta=\\
+= \int_0^\infty dexp(y_{new}, \theta) \cdot dgamma(\theta, \alpha + \beta, \beta + \sum_{i} y_{i}) d\theta = \\
+= \int_0^\infty \theta e^{-\theta y_{new}} \cdot \frac {(\beta + \sum_{i} y_{i})^{\alpha + n}} {\Gamma (\alpha + n)} \cdot \theta^{(\alpha + n + 1)} \cdot e^{-(\beta + \sum_{i}y_{i})\theta} d\theta=\\
+=\frac {(\beta + \sum_{i}y_{i})^{(\alpha + n)}} {\Gamma (\alpha + n)} \int_0^\infty \theta^{(\alpha + n + 2)} \cdot e^{-(y_{new}+\sum_{i}y_{i}+ \beta) \theta} d\theta =\\
+= \frac {(\beta^*)^{\alpha^*}}{\Gamma(\alpha^*)} \cdot \frac {\Gamma(\alpha^* +1)} {(y_{new}+ \beta^*)^{(\alpha^*+1)}}=\\
+\varpropto (\beta^* + y_{new})^{-(\alpha^* +1)}=\\
+= (\sum_{i}y_{i} + \beta + y_{new})^{-(\alpha +n+1)}\\
+\rightarrow y_{new}|y_{obs} \sim ParetoII(\alpha +n, \sum_{i}y_{i} + \beta)
+$$
+
+### 6. However, your boss would be interested in the probability that the average bulb lifetime $1/\theta$ exceeds 550 hours. What can you say about that after observing the data? Provide her with a meaningful Bayesian answer.
+
+I'm simply going to evaluate in R the following value:\
+$$P(\psi > 550) = 1 - P(\psi \leq 550) = 1 - pinvgamma(550, \alpha^*, \beta^*)$$
+Where the parameters for the Inverse-Gamma are the same as those of the posterior Gamma:
+$$
+\begin{cases}
+\alpha^* = \alpha + n = 23.007\\
+\beta^* = \beta + \sum_i y_i = 10601.372
+\end{cases}
+$$
+```{r echo=FALSE}
+library(invgamma)
+result <- 1 - pinvgamma(550, a.new, b.new)
+print(paste(c("The probability that the average bulb lifetime exceeds 550 hours is :", result)))
+```
+
+I therefore infer a low probability of encountering a bulb with the average lifetime that exceeds 550 hours.
+
+\newpage
+
+## C. Exchangeability
+
+Let us consider an infinitely exchangeable sequence of binary random variables $X_1,...,X_n,...$
+
+### 1. Provide the definition of the distributional properties characterizing an infinitely echangeable binary sequence of random variables $X_1, ...,X_n, ....$. Consider the De Finetti representation theorem relying on a suitable distribution $\pi(\theta)$ on $[0,1]$ and show that 
+
+\begin{eqnarray*} 
+E[X_i]&=&E_{\pi}[\theta]\\
+E[X_i X_j] &=& E_{\pi}[\theta^2]\\
+Cov[X_i X_j] &=& Var_{\pi}[\theta]
+\end{eqnarray*} 
+
+A stichastic process $X_{1},..,X_{n},...$ is *infinitely exchangeable if we can take for each tuple $(n_{1},...,n_{k})$ and any permutation of the first k integers $\sigma = (\sigma_{1},..., \sigma_{k})$ the following rule holds: $(X_{n_{1}},..,X_{n_{k}})$ have the same distribution of $(X_{\sigma_{1}},..,X_{\sigma_{k}})$.\
+This condition means that the order of the observation of a sequence of random variables has no role in the definition of the joint distribution of the sequence itself and a second distributional property implied by the exchangeability condition is the fact that $X_{1},..,X_{n},...$ are identically distributed and we have a sort of conditional independence of  $X_{1},..,X_{n},...$ given $\theta$.\
+It can be proved that $\overline{X_{n}} = \frac {\sum_{i}X_{i}} {n}  \thickapprox \pi(\theta)$.\
+Throughout the lectures we have shown that the beta is a conjugate distribution of the binomial. In this case it would be reasonable to choose as the density $\pi(\theta)$ a beta.\
+
+### 1. Let's verify the reported properties:
+
+>- by assumption $X_{i} \sim Ber(\theta)$, thus it's easy to prove that $E_{X_{i}| \theta}[X_{i}| \theta] = \theta$  and the *law of total expectation* claims that $$E_{X_{i}}[X_i] = E_{\theta}[E_{X_{i}|\theta}[X_i|\theta]] = E_{\theta}[\theta]$$
+>- the exchangeability condition implies that $X_{1},..,X_{n}|\theta$ are i.i.d and this in turn implies that:
+
+$$E[X_{i} \cdot X_{j}|\theta] = E[X_{i}|\theta] \cdot E[X_{j}|\theta] = \theta^2, \forall i \neq j \\
+\rightarrow E_{X_{i}X_{j}}[X_iX_{j}] = E_{\theta}[E_{X_{i}X_{i}|\theta}[X_iX_{i}|\theta]] = E_{\theta}[\theta^2]$$
+
+>- by simply using the above properties and the definition of variance and covariance it is possible to prove that: 
+$$
+Cov(X_iX_j) = E[X_iX_j] - E[X_i] \cdot E[X_j] = \\
+= E_\theta[\theta^2] - (E_\theta[\theta])^2 = Var_\theta(\theta)
+$$
+
+
+### 2. Prove that any couple of random variabes in that sequence must be non-negatively correlated. 
+
+Starting from the definition of *correlation* $Cor[X_i X_j] = \frac {Cov(X_iX_j)} {sd(X_{i}) \cdot sd(X_{j})}$ , it's possible to use the above properties again since:
+
+>- $Cov(X_iX_j) = Var_\theta(\theta) \geq 0$ by definition of variance;
+>- $sd(X_{i}) \geq 0$ $\forall i$ by definition of standard deviation.
+
+This implies that the sequence is non-negatively correlated.
+  
+### 3. Find what are the conditions on the distribution $\pi(\cdot)$ so that $Cor[X_i X_j]=1$.
+
+Let's derive the $Var_{X_j}(X_j)$ with the *law of total variance*:
+$$
+Var_{X_j}(X_j) = E_{\theta}[Var_{X_j | \theta}(X_j | \theta)] + Var_{\theta}(E_{X_j | \theta} [ X_j | \theta]) = \\
+= E_{\theta}[\theta \cdot (1 - \theta)] + Var_{\theta}(\theta) = \\
+= E_\theta[\theta] - E_\theta[\theta^2] + Var_\theta(\theta)
+$$
+Remembering the formula for correlation given in the previous point and using the *law of total variance* :
+$$
+\begin{cases}
+Cor(X_iX_j) =  \frac {Var_\theta(\theta)}{Var(X_j)} \\
+Var_{X_j}(X_j) = E_\theta[\theta] - E_\theta[\theta^2] + Var_\theta(\theta)
+\end{cases}
+\rightarrow Cor(X_iX_j) =  \frac {Var_\theta(\theta)}{E_\theta[\theta] - E_\theta[\theta^2] + Var_\theta(\theta)}
+$$
+Thus the distribution $\pi(\cdot)$ must respect all over the previous properties and the following last condition of equality between first and second moment:
+$$
+Cor(X_iX_j) = 1 \leftrightarrow E_\theta[\theta] = E_\theta[\theta^2]
+$$
+
+### 4. What do these conditions imply on the type and shape of $\pi(\cdot)$? (make an example).
+
+The shape of the distribution has to respect the condition of equality between first  and second moments and the fact that the support is $[0,1]$. In particular we need to select a good distribution for the parameter $\theta$ of a Bernoulli distribution s.t. the sequence of  infinitely echangeable r.V.s $\{{X_i}\}_{i=0}^{\infty}$ are identically distributed as a $Ber(\theta)$ and the condition $Cor(X_iX_j) = 1$ is satisfied $\forall i \neq j$. A distribution of this type is a degenerative one, for example a *two-point distribution* with possible outcomes 0 and 1. In this case it is then possible to simply refer to a Bernoulli random variable for $\theta$ and the distribution $\pi(.)$ is parameterized over $p$, assigning probability $p$ to the point mass at 1 and $(1-p)$ at the point mass at 0.
+
+It' easy to verify that $E[\theta] = E[\theta^2] = p$.
+By this construction of $\pi(\theta)$ and considering the De Finetti representation theorem we ensure unit correlation between each pair of random variables in the sequence by guaranteeing an obvious sequence result of only zeros or only ones. 
+
+\vspace{7cm}
+
+
+
+
+
+* * *
+  <div class="footer"> &copy; 2022-2023 - Statistical Methods in Data Science and Laboratory II -  2022-2023 </div>
+```{r, warning=FALSE, error=FALSE, message=FALSE, echo=FALSE}
+cat(paste("Last update by LT:",date()))
+```
